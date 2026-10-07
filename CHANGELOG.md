@@ -1,0 +1,113 @@
+# Changelog
+
+<!-- scriv-insert-here -->
+
+## Unreleased
+
+- [Feature] Initial release. `tutor-objectstorage` unifies three previously
+  separate ways of configuring Open edX's object storage behind one config
+  key, `OBJSTORAGE_BACKEND`:
+
+  - `rustfs` (default) — a local, self-hosted RustFS server. Successor to
+    the standalone `tutor-rustfs` plugin.
+  - `azure` — Azure Blob Storage via rclone's `serve s3` translation layer.
+    Successor to the standalone `tutor-rclone-gateway` plugin. Gated behind
+    a second, explicit `OBJSTORAGE_AZURE_ACKNOWLEDGE_RISK` setting — see
+    below and `EVALUATION.md`.
+  - `external_s3` — any external S3-compatible provider (AWS S3, GCS,
+    Ceph, a RustFS/MinIO instance elsewhere). Reimplements the
+    functionality of [tutor-contrib-s3](https://github.com/cleura/tutor-contrib-s3),
+    an independently maintained plugin this one does not depend on or
+    replace, so that this plugin is a complete, standalone choice.
+
+  Selecting a backend you aren't using costs nothing: that backend's
+  compose/Kubernetes resources, Caddy routing, and init-task logic simply
+  don't render for the other two. `tutor-rustfs`, `tutor-rclone-gateway`,
+  and `tutor-minio` all conflict with this plugin and cannot be enabled
+  alongside it. See `MIGRATING.rst` for moving an existing `tutor-rustfs`
+  or `tutor-rclone-gateway` deployment onto this plugin.
+
+  - 💥 **One shared generated secret, not one per backend.** An earlier
+    design generated a separate `CONFIG_UNIQUE` secret per backend and
+    dispatched `OPENEDX_AWS_SECRET_ACCESS_KEY` between them with a
+    `{% if OBJSTORAGE_BACKEND == ... %}` expression. This broke
+    `tutor config save` outright: Tutor renders `CONFIG_OVERRIDES` during
+    an early `load_minimal()` pass that happens *before* plugin
+    `CONFIG_DEFAULTS` — including `OBJSTORAGE_BACKEND` itself — are merged
+    in, so the backend-conditional expression raised "is undefined" on
+    every save. Worse, papering over the crash would still have been
+    wrong: whatever fallback branch fired would have been permanently
+    written into `config.yml` on the very first save, regardless of which
+    backend was actually selected, with no later re-evaluation. Fixed by
+    using one shared `CONFIG_UNIQUE` secret and an unconditional override —
+    correct because only one backend's infrastructure is ever actually
+    running at a time, so there is nothing to isolate. Caught by actually
+    running `tutor config save`, not by the unit test suite alone.
+  - 💥 **The fuller 6-bucket model (main, file-upload, video-upload,
+    grades, openedx-learning, discovery) now applies to all three
+    backends**, including `external_s3`, which previously (under
+    `tutor-contrib-s3`) had a narrower 4-bucket model. An `external_s3`
+    deployer migrating from `tutor-contrib-s3` needs to provision 2 more
+    buckets. The profile-image-stays-on-local-filesystem capability
+    `tutor-contrib-s3` offered (`S3_PROFILE_IMAGE_BUCKET=""`) is preserved
+    exactly, as `OBJSTORAGE_EXTERNAL_S3_PROFILE_IMAGE_BUCKET=""` — a strict
+    superset of the old behavior, not a replacement.
+  - 💥 **The init task's job/service name now matches the plugin's own
+    Tutor entry-point name** (`objectstorage` → `objectstorage-job`, for
+    every backend). `tutor-rclone-gateway`'s init task was registered under
+    a different name than its plugin name (`rclonegw` vs. `rclonegateway`),
+    so `tutor local do init --limit=rclonegw` silently matched nothing.
+    Making these identical removes that trap instead of reproducing it
+    under a new name. One consequence: the `external_s3` backend, which
+    provisions nothing, still has to contribute a minimal stub job
+    (`image: docker.io/library/alpine:3`) to this shared slot, since
+    Tutor's job runner resolves `<service>-job` unconditionally regardless
+    of which backend is active.
+  - [Security] The `azure` backend's rclone image stays hard-pinned to an
+    exact tag (`docker.io/rclone/rclone:1.75.1`), not a floating range, for
+    the same reason it was pinned in `tutor-rclone-gateway`: 1.75.1 fixes
+    CVE-2026-88045, an unauthenticated memory-exhaustion denial-of-service
+    in rclone's multipart upload path, introduced in the same 1.75.0
+    release that rewrote multipart streaming. Bumping this requires
+    re-running the live conformance suite against the new tag first — see
+    `EVALUATION.md`.
+
+- [Improvement] A new cross-backend containment test suite
+  (`tests/test_patches.py`) — the one genuinely new test class this merge's
+  modular, self-guarded-fragment-per-backend design needs: it renders every
+  infrastructure-relevant patch for each of the three backends and asserts
+  that none of the other two backends' markers (service names, CLI flags,
+  env var names) leak into the output. Neither predecessor plugin's test
+  suite could express this, because neither ever had to render a second
+  backend's content side by side with its own. Also carries forward both
+  predecessor plugins' own hardened test suites in full: hand-maintained
+  `EXPECTED_KEYS` sets, legacy-prefix leak guards, the Caddyfile
+  discovery-clause regression guard, and the dynamic
+  `test_patch_names_are_real_tutor_hooks` check that greps installed Tutor
+  core/sibling packages for real `patch(...)` hook names (this is what
+  originally caught `tutor-rclone-gateway`'s `k8s-networkpolicy` naming
+  bug during its own development).
+
+- [Documentation] `EVALUATION.md` carries forward `tutor-rclone-gateway`'s
+  full evaluation of the `azure` backend (the multipart livelock finding,
+  the non-standard anonymous-request error code, the Range-request status
+  quirk) rescoped as one backend's evaluation within this plugin rather
+  than a whole separate plugin's. `TESTING.rst` merges both predecessor
+  plugins' tiered procedures into one, adding backend-switching examples
+  and an `external_s3` tier describing how that backend was verified
+  during development (against a standalone S3-compatible stand-in
+  container, since "live" has no one-size-fits-all meaning across external
+  providers).
+
+- [Finding] Live-testing this merge (not just rendering templates) verified
+  all three backends end-to-end, including through the real Caddy
+  container for the `azure` backend's public/private routing split (not
+  just at the container level): bucket provisioning, authenticated and
+  anonymous read/write, correct rejection of anonymous writes and of
+  anonymous reads on private buckets, a real in-order multipart upload,
+  and — for `external_s3` — a full round trip against a standalone
+  S3-compatible stand-in with no Tutor-managed infrastructure at all. The
+  `azure` backend's known multipart livelock (see `EVALUATION.md` Finding
+  1) was not re-triggered deliberately during this merge; it was already
+  proven in `tutor-rclone-gateway`'s own evaluation and nothing about the
+  merge changes the pinned rclone image or its command-line flags.
