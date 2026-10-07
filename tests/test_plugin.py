@@ -148,7 +148,9 @@ def test_openedx_credentials_are_wired(
     cfg = config_by_backend[backend]
     assert cfg["OPENEDX_AWS_ACCESS_KEY"] == "openedx"
     assert len(cfg["OPENEDX_AWS_SECRET_ACCESS_KEY"]) == 24
-    assert cfg["OPENEDX_AWS_SECRET_ACCESS_KEY"] == cfg["OBJSTORAGE_AWS_SECRET_ACCESS_KEY"]
+    assert (
+        cfg["OPENEDX_AWS_SECRET_ACCESS_KEY"] == cfg["OBJSTORAGE_AWS_SECRET_ACCESS_KEY"]
+    )
 
 
 def test_init_task_registered_once_per_backend() -> None:
