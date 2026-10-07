@@ -1,0 +1,14 @@
+{% if OBJSTORAGE_BACKEND == "rustfs" %}
+# Init/admin job container.
+#
+# Runs the init logic (bucket creation + anonymous read policy) from
+# `rc`, RustFS's own S3-compatible CLI image. The RustFS server image
+# does not ship a client itself.
+#
+# The service name is "objectstorage-job", shared by every backend's
+# CLI_DO_INIT_TASKS registration - see plugin.py and config.py.
+objectstorage-job:
+  image: {{ OBJSTORAGE_RUSTFS_RC_DOCKER_IMAGE }}
+  entrypoint: []
+  depends_on: ["rustfs"]
+{% endif %}

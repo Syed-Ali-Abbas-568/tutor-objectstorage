@@ -1,0 +1,31 @@
+STORAGES["default"]["BACKEND"] = "storages.backends.s3boto3.S3Boto3Storage"
+VIDEO_IMAGE_SETTINGS["STORAGE_KWARGS"]["location"] = VIDEO_IMAGE_SETTINGS["STORAGE_KWARGS"]["location"].lstrip("/")
+VIDEO_TRANSCRIPTS_SETTINGS["STORAGE_KWARGS"]["location"] = VIDEO_TRANSCRIPTS_SETTINGS["STORAGE_KWARGS"]["location"].lstrip("/")
+GRADES_DOWNLOAD["STORAGE_KWARGS"] = {"location": GRADES_DOWNLOAD["STORAGE_KWARGS"]["location"].lstrip("/")}
+GRADES_DOWNLOAD["STORAGE_KWARGS"]["bucket_name"] = "{{ OBJSTORAGE_GRADES_BUCKET_NAME }}"
+OPENEDX_LEARNING["MEDIA"]["BACKEND"] = STORAGES["default"]["BACKEND"]
+OPENEDX_LEARNING["MEDIA"]["OPTIONS"] = {
+    'bucket_name': "{{ OBJSTORAGE_OPENEDX_LEARNING_BUCKET_NAME }}",
+}
+
+# Ora2 setting
+ORA2_FILEUPLOAD_BACKEND = "s3"
+FILE_UPLOAD_STORAGE_BUCKET_NAME = "{{ OBJSTORAGE_FILE_UPLOAD_BUCKET_NAME }}"
+
+AWS_DEFAULT_ACL = None
+AWS_QUERYSTRING_EXPIRE = 7 * 24 * 60 * 60  # 1 week: this is necessary to generate valid download urls
+
+# Also set by tutor-contrib-s3; ported here for all three backends. Harmless
+# where unused, and reinforces that none of this plugin's init tasks
+# auto-create buckets via django-storages' own bucket-creation path either.
+AWS_AUTO_CREATE_BUCKET = False
+
+from botocore.client import Config as BotoConfig # Importing explicitly just to be safe
+
+# boto3 >= 1.36 sends a CRC32 checksum on every upload by default, which
+# non-AWS S3 implementations reject. Restricting checksums to operations
+# that require them keeps uploads working against every backend here. Also
+# set as a standalone Django setting (as tutor-contrib-s3 does) in addition
+# to the BotoConfig fields each backend sets below, in case a given
+# django-storages version reads one but not the other.
+AWS_REQUEST_CHECKSUM_CALCULATION = "when_required"

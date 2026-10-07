@@ -1,0 +1,4 @@
+AWS_STORAGE_BUCKET_NAME: "{{ OBJSTORAGE_BUCKET_NAME }}"
+AWS_S3_CUSTOM_DOMAIN: "{% if OBJSTORAGE_BACKEND == "external_s3" %}{{ OBJSTORAGE_EXTERNAL_S3_CUSTOM_DOMAIN }}{% endif %}"
+AWS_QUERYSTRING_AUTH: {% if OBJSTORAGE_QUERYSTRING_AUTH %}true{% else %}false{% endif %}
+AWS_S3_SECURE_URLS: {% if OBJSTORAGE_BACKEND == "external_s3" %}{% if OBJSTORAGE_EXTERNAL_S3_USE_SSL %}true{% else %}false{% endif %}{% else %}{% if ENABLE_HTTPS %}true{% else %}false{% endif %}{% endif %}

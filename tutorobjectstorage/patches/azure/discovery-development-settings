@@ -1,0 +1,3 @@
+{% if OBJSTORAGE_BACKEND == "azure" and OBJSTORAGE_AZURE_ACKNOWLEDGE_RISK %}
+AWS_S3_ENDPOINT_URL = "{{ "https" if ENABLE_HTTPS else "http" }}://{{ OBJSTORAGE_AZURE_HOST }}:9000"
+{% endif %}

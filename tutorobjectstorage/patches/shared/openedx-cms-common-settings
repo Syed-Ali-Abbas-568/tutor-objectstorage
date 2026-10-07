@@ -1,0 +1,7 @@
+COURSE_IMPORT_EXPORT_STORAGE = USER_TASKS_ARTIFACT_STORAGE
+# Also set by tutor-contrib-s3; ported here for parity (see the project
+# plan's feature-parity checklist). Harmless if unused by the Open edX
+# release in use - derived the same way as COURSE_IMPORT_EXPORT_STORAGE
+# above rather than reassigned directly, so it stays correct if
+# USER_TASKS_ARTIFACT_STORAGE is ever repointed upstream.
+COURSE_METADATA_EXPORT_STORAGE = USER_TASKS_ARTIFACT_STORAGE

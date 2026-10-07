@@ -1,0 +1,10 @@
+{% if OBJSTORAGE_BACKEND == "azure" and OBJSTORAGE_AZURE_ACKNOWLEDGE_RISK %}
+AWS_S3_SIGNATURE_VERSION = "s3v4"
+AWS_S3_ENDPOINT_URL = "{{ "https" if ENABLE_HTTPS else "http" }}://{{ OBJSTORAGE_AZURE_HOST }}"
+AWS_S3_REGION_NAME = "{{ OBJSTORAGE_AZURE_REGION }}"
+AWS_S3_CLIENT_CONFIG = BotoConfig(
+    request_checksum_calculation='when_required',
+    response_checksum_validation='when_required',
+    signature_version='s3v4', # We need to explicitly add this here otherwise BotoConfig overrides it to default
+)
+{% endif %}

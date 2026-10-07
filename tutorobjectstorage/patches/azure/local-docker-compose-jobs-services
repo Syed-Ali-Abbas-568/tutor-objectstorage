@@ -1,0 +1,24 @@
+{% if OBJSTORAGE_BACKEND == "azure" and OBJSTORAGE_AZURE_ACKNOWLEDGE_RISK %}
+# Init/admin job container.
+#
+# Reuses the single pinned rclone image — rclone's own CLI is its own
+# admin client, unlike RustFS which needs a separate `rc` image because
+# its server image ships no client at all.
+#
+# No `depends_on: rclonegw`: bucket (Azure container) creation talks
+# straight to Azure via the same `azureblob:` remote, not through either
+# gateway process, so only Azurite (when it's the active backend) needs to
+# be up first.
+#
+# The service name is "objectstorage-job", shared by every backend's
+# CLI_DO_INIT_TASKS registration - see plugin.py and config.py.
+objectstorage-job:
+  image: {{ OBJSTORAGE_AZURE_DOCKER_IMAGE }}
+  entrypoint: []
+  environment:
+    RCLONE_CONFIG_AZUREBLOB_TYPE: "azureblob"
+    RCLONE_CONFIG_AZUREBLOB_ACCOUNT: "{{ OBJSTORAGE_AZURE_ACCOUNT }}"
+    RCLONE_CONFIG_AZUREBLOB_KEY: "{{ OBJSTORAGE_AZURE_ACCOUNT_KEY }}"
+    RCLONE_CONFIG_AZUREBLOB_ENDPOINT: "{{ OBJSTORAGE_AZURE_ENDPOINT }}"
+  depends_on: ["azurite"]
+{% endif %}

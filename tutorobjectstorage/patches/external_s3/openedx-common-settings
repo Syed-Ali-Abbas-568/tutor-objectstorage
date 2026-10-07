@@ -1,0 +1,19 @@
+{% if OBJSTORAGE_BACKEND == "external_s3" %}
+AWS_S3_SIGNATURE_VERSION = "s3v4"
+{% if OBJSTORAGE_EXTERNAL_S3_ENDPOINT_HOST %}
+AWS_S3_ENDPOINT_URL = "{{ "https" if OBJSTORAGE_EXTERNAL_S3_USE_SSL else "http" }}://{{ OBJSTORAGE_EXTERNAL_S3_ENDPOINT_HOST }}{% if OBJSTORAGE_EXTERNAL_S3_PORT %}:{{ OBJSTORAGE_EXTERNAL_S3_PORT }}{% endif %}"
+{% endif %}
+AWS_S3_REGION_NAME = "{{ OBJSTORAGE_EXTERNAL_S3_REGION }}"
+# Unlike the rustfs/azure backends, this one is not behind this plugin's
+# own Caddy - the provider's TLS posture is independent of whether this
+# Open edX site itself uses HTTPS (Tutor's ENABLE_HTTPS), so these are
+# driven by their own dedicated setting instead.
+AWS_S3_USE_SSL = {{ "True" if OBJSTORAGE_EXTERNAL_S3_USE_SSL else "False" }}
+AWS_S3_ADDRESSING_STYLE = "{{ OBJSTORAGE_EXTERNAL_S3_ADDRESSING_STYLE }}"
+AWS_S3_CLIENT_CONFIG = BotoConfig(
+    request_checksum_calculation='when_required',
+    response_checksum_validation='when_required',
+    signature_version='s3v4', # We need to explicitly add this here otherwise BotoConfig overrides it to default
+    s3={"addressing_style": "{{ OBJSTORAGE_EXTERNAL_S3_ADDRESSING_STYLE }}"},
+)
+{% endif %}

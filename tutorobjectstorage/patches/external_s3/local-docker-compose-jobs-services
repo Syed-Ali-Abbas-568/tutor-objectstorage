@@ -1,0 +1,13 @@
+{% if OBJSTORAGE_BACKEND == "external_s3" %}
+# No real infrastructure for this backend - see
+# templates/objectstorage/tasks/objectstorage/external_s3.sh, which is a
+# documented no-op (buckets are assumed to already exist, provisioned
+# out-of-band, matching tutor-contrib-s3's existing philosophy). This stub
+# only exists because CLI_DO_INIT_TASKS always registers one shared
+# service name ("objectstorage") regardless of backend, and Tutor's job
+# runner resolves "<service>-job" unconditionally - a missing compose
+# service would be a hard Docker error, not a graceful skip.
+objectstorage-job:
+  image: docker.io/library/alpine:3
+  entrypoint: []
+{% endif %}

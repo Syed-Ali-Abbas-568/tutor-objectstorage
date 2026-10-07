@@ -1,0 +1,130 @@
+{% if OBJSTORAGE_BACKEND == "azure" and OBJSTORAGE_AZURE_ACKNOWLEDGE_RISK %}
+---
+# Two gateway Deployments (authenticated + anonymous read-only) plus
+# Azurite, the local Azure Storage emulator used as the default test
+# backend. None of the three mount a volume: all object data lives in
+# Azure, not on local disk, so unlike RustFS's Deployment there is no PVC,
+# no `fsGroup`, and no `strategy: Recreate` requirement — these can roll
+# out with Kubernetes' default strategy.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rclonegw
+  labels:
+    app.kubernetes.io/name: rclonegw
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: rclonegw
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: rclonegw
+    spec:
+      securityContext:
+        runAsUser: {{ OBJSTORAGE_AZURE_UID }}
+        runAsGroup: {{ OBJSTORAGE_AZURE_GID }}
+      containers:
+        - name: rclonegw
+          image: {{ OBJSTORAGE_AZURE_DOCKER_IMAGE }}
+          args:
+            - serve
+            - s3
+            - "azureblob:"
+            - --addr=:9000
+            - --auth-key={{ OPENEDX_AWS_ACCESS_KEY }},{{ OPENEDX_AWS_SECRET_ACCESS_KEY }}
+            - --vfs-cache-mode=off
+            - --dir-cache-time=0
+          env:
+            - name: RCLONE_CONFIG_AZUREBLOB_TYPE
+              value: "azureblob"
+            - name: RCLONE_CONFIG_AZUREBLOB_ACCOUNT
+              value: "{{ OBJSTORAGE_AZURE_ACCOUNT }}"
+            - name: RCLONE_CONFIG_AZUREBLOB_KEY
+              value: "{{ OBJSTORAGE_AZURE_ACCOUNT_KEY }}"
+            - name: RCLONE_CONFIG_AZUREBLOB_ENDPOINT
+              value: "{{ OBJSTORAGE_AZURE_ENDPOINT }}"
+          ports:
+            - containerPort: 9000
+              name: s3-api
+---
+# Anonymous, read-only, scoped to the public bucket(s) only — see the
+# caddyfile and local-docker-compose-services patches for the full
+# rationale. This Deployment is reachable only from the Caddy pod: see
+# the k8s-override patch (NetworkPolicy) and the ClusterIP-only
+# k8s-services patch. Neither restriction is optional — tutor-rustfs's own
+# NodePort Service pattern, mirrored here without them, would let any pod
+# or node in the cluster reach this anonymous, read-only gateway directly,
+# bypassing Caddy's method+path routing entirely. The --include/--read-only
+# scoping below is still the correct last line of defense even so, but the
+# network exposure itself should not be left open regardless.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rclonegw-public
+  labels:
+    app.kubernetes.io/name: rclonegw-public
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: rclonegw-public
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: rclonegw-public
+    spec:
+      securityContext:
+        runAsUser: {{ OBJSTORAGE_AZURE_UID }}
+        runAsGroup: {{ OBJSTORAGE_AZURE_GID }}
+      containers:
+        - name: rclonegw-public
+          image: {{ OBJSTORAGE_AZURE_DOCKER_IMAGE }}
+          args:
+            - serve
+            - s3
+            - "azureblob:"
+            - --addr=:9000
+            - --read-only
+            - --vfs-cache-mode=off
+            - --dir-cache-time=0
+            - --include=/{{ OBJSTORAGE_BUCKET_NAME }}/**
+            {% if OBJSTORAGE_DISCOVERY_BUCKET_NAME %}- --include=/{{ OBJSTORAGE_DISCOVERY_BUCKET_NAME }}/**{% endif %}
+          env:
+            - name: RCLONE_CONFIG_AZUREBLOB_TYPE
+              value: "azureblob"
+            - name: RCLONE_CONFIG_AZUREBLOB_ACCOUNT
+              value: "{{ OBJSTORAGE_AZURE_ACCOUNT }}"
+            - name: RCLONE_CONFIG_AZUREBLOB_KEY
+              value: "{{ OBJSTORAGE_AZURE_ACCOUNT_KEY }}"
+            - name: RCLONE_CONFIG_AZUREBLOB_ENDPOINT
+              value: "{{ OBJSTORAGE_AZURE_ENDPOINT }}"
+          ports:
+            - containerPort: 9000
+              name: s3-api
+---
+# Azurite: the default test backend. Harmless and unused once
+# OBJSTORAGE_AZURE_ACCOUNT/_ACCOUNT_KEY/_ENDPOINT are overridden to point
+# at real Azure.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: azurite
+  labels:
+    app.kubernetes.io/name: azurite
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: azurite
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: azurite
+    spec:
+      containers:
+        - name: azurite
+          image: {{ OBJSTORAGE_AZURE_AZURITE_DOCKER_IMAGE }}
+          args: ["azurite-blob", "--blobHost", "0.0.0.0", "--blobPort", "10000"]
+          ports:
+            - containerPort: 10000
+              name: blob
+{% endif %}

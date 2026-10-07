@@ -1,0 +1,31 @@
+{% if OBJSTORAGE_BACKEND == "azure" and OBJSTORAGE_AZURE_ACKNOWLEDGE_RISK %}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  # Must be "objectstorage-job" to match the service name shared by every
+  # backend's CLI_DO_INIT_TASKS registration in plugin.py.
+  name: objectstorage-job
+  labels:
+    app.kubernetes.io/component: job
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        # Bucket (Azure container) creation talks straight to Azure via
+        # the azureblob: remote, not through either gateway Deployment —
+        # the same single pinned image is its own admin client.
+        - name: objectstorage
+          image: {{ OBJSTORAGE_AZURE_DOCKER_IMAGE }}
+          command: []
+          env:
+            - name: RCLONE_CONFIG_AZUREBLOB_TYPE
+              value: "azureblob"
+            - name: RCLONE_CONFIG_AZUREBLOB_ACCOUNT
+              value: "{{ OBJSTORAGE_AZURE_ACCOUNT }}"
+            - name: RCLONE_CONFIG_AZUREBLOB_KEY
+              value: "{{ OBJSTORAGE_AZURE_ACCOUNT_KEY }}"
+            - name: RCLONE_CONFIG_AZUREBLOB_ENDPOINT
+              value: "{{ OBJSTORAGE_AZURE_ENDPOINT }}"
+{% endif %}

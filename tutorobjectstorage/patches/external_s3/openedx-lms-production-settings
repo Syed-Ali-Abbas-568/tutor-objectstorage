@@ -1,0 +1,18 @@
+{% if OBJSTORAGE_BACKEND == "external_s3" and OBJSTORAGE_EXTERNAL_S3_PROFILE_IMAGE_BUCKET %}
+PROFILE_IMAGE_BACKEND = {
+    "class": STORAGES["default"]["BACKEND"],
+    "options": {
+        "bucket_name": "{{ OBJSTORAGE_EXTERNAL_S3_PROFILE_IMAGE_BUCKET }}",
+        "location": PROFILE_IMAGE_BACKEND["options"]["location"].lstrip("/"),
+        {% if OBJSTORAGE_EXTERNAL_S3_PROFILE_IMAGE_CUSTOM_DOMAIN %}"custom_domain": "{{ OBJSTORAGE_EXTERNAL_S3_PROFILE_IMAGE_CUSTOM_DOMAIN }}",{% endif %}
+    },
+}
+{% endif %}
+{#
+  Reproduces tutor-contrib-s3's S3_PROFILE_IMAGE_BUCKET behavior exactly:
+  OBJSTORAGE_EXTERNAL_S3_PROFILE_IMAGE_BUCKET defaults to
+  "{{ OBJSTORAGE_BUCKET_NAME }}" (see backends/external_s3.py), so profile
+  images go to object storage by default like the other two backends, but
+  setting it to "" here keeps profile images on local filesystem instead -
+  a strict superset of tutor-contrib-s3's capability, not a replacement.
+#}

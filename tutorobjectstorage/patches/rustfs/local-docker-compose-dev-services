@@ -1,0 +1,10 @@
+{% if OBJSTORAGE_BACKEND == "rustfs" %}
+rustfs:
+  ports:
+    - "127.0.0.1:9000:9000"
+    - "127.0.0.1:9001:9001"
+  networks:
+    default:
+      aliases:
+        - "{{ OBJSTORAGE_RUSTFS_HOST }}"
+{% endif %}

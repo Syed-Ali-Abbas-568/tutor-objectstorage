@@ -1,0 +1,10 @@
+{% if OBJSTORAGE_BACKEND == "azure" and OBJSTORAGE_AZURE_ACKNOWLEDGE_RISK %}
+PROFILE_IMAGE_BACKEND = {
+    "class": STORAGES["default"]["BACKEND"],
+    "options": {
+        "bucket_name": "{{ OBJSTORAGE_BUCKET_NAME }}",
+        "querystring_auth": False,
+        "location": PROFILE_IMAGE_BACKEND["options"]["location"].lstrip("/"),
+    },
+}
+{% endif %}

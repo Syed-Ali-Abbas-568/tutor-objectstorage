@@ -1,0 +1,3 @@
+{% if OBJSTORAGE_BACKEND == "rustfs" %}
+AWS_S3_ENDPOINT_URL = "{{ "https" if ENABLE_HTTPS else "http" }}://{{ OBJSTORAGE_RUSTFS_HOST }}:9000"
+{% endif %}

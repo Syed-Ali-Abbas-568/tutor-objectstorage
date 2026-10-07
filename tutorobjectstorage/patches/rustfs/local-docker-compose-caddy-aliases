@@ -1,0 +1,1 @@
+{% if OBJSTORAGE_BACKEND == "rustfs" %}- "{{ OBJSTORAGE_RUSTFS_HOST }}"{% endif %}

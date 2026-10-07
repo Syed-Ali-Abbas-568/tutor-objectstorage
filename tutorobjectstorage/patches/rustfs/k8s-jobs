@@ -1,0 +1,21 @@
+{% if OBJSTORAGE_BACKEND == "rustfs" %}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  # Must be "objectstorage-job" to match the service name shared by every
+  # backend's CLI_DO_INIT_TASKS registration in plugin.py.
+  name: objectstorage-job
+  labels:
+    app.kubernetes.io/component: job
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        # The `rc` client, not the RustFS server: the init task only
+        # creates buckets and sets policies over the S3 API.
+        - name: objectstorage
+          image: {{ OBJSTORAGE_RUSTFS_RC_DOCKER_IMAGE }}
+          command: []
+{% endif %}

@@ -1,0 +1,20 @@
+{% if OBJSTORAGE_BACKEND == "external_s3" %}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: objectstorage-job
+  labels:
+    app.kubernetes.io/component: job
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        # No real infrastructure for this backend - see
+        # local-docker-compose-jobs-services for why this stub still has
+        # to exist.
+        - name: objectstorage
+          image: docker.io/library/alpine:3
+          command: []
+{% endif %}
