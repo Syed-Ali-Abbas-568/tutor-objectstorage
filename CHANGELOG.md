@@ -4,6 +4,22 @@
 
 ## Unreleased
 
+- [Feature] Widen the `tutor` dependency to `>=21.0.0,<23.0.0`, adding
+  support for the now-stable Tutor 22.x line (previously `<22.0.0`).
+  Verified directly against the real `tutor==22.0.2` PyPI release, not just
+  a version-string bump: the full test suite, a real `tutor config save`
+  (including the `azure` risk-gate hard-fail, which depends on exactly when
+  `CONFIG_LOADED` fires relative to `CONFIG_DEFAULTS`), and the specific
+  internal mechanics this plugin's design depends on
+  (`load_minimal()`/`load_full()`'s differing config-merge order,
+  `CLI_DO_INIT_TASKS`'s per-tuple execution) were all re-checked against
+  22.0.2's own source and found byte-identical to 21.x. Tutor 22.x itself
+  requires Python >=3.10 (enforced by Tutor's own packaging, not this
+  plugin's) - a Python 3.9 environment resolves to the latest 21.x
+  automatically, so the existing CI matrix exercises both major versions
+  without changes. Not yet tested against 23.x, which is still Tutor's
+  unreleased `main` branch at the time of this change.
+
 - [Feature] Initial release. `tutor-objectstorage` unifies three previously
   separate ways of configuring Open edX's object storage behind one config
   key, `OBJSTORAGE_BACKEND`:

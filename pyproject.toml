@@ -25,14 +25,25 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-  "tutor>=21.0.0,<22.0.0",
+  # Supports Tutor 21.x and 22.x, both verified directly: full test suite,
+  # a real `tutor config save` (including the azure risk-gate hard-fail),
+  # and the exact internal mechanics this plugin depends on (load_minimal()
+  # vs. load_full()'s CONFIG_DEFAULTS timing, CONFIG_LOADED's firing point,
+  # CLI_DO_INIT_TASKS's per-tuple execution) read directly from Tutor 22.0.2's
+  # own source and confirmed byte-identical to 21.x. Tutor 22.x itself
+  # requires Python >=3.10 (a constraint Tutor's own packaging enforces, not
+  # this one) - a Python 3.9 environment resolves to the latest 21.x
+  # automatically, so the existing 3.9/3.12 CI matrix below exercises both
+  # major versions without needing a third entry. Not yet tested against
+  # 23.x, which is still Tutor's unreleased main branch.
+  "tutor>=21.0.0,<23.0.0",
 ]
 # these fields will be set by hatch_build.py
 dynamic = ["version"]
 
 [project.optional-dependencies]
 dev = [
-  "tutor[dev]>=21.0.0,<22.0.0",
+  "tutor[dev]>=21.0.0,<23.0.0",
   "ruff",
   "pytest",
   "pyyaml",
